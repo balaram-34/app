@@ -1,0 +1,59 @@
+import React, { useState } from 'react';
+import { Button, View, Text } from 'react-native';
+import { Audio } from 'expo-av';
+import axios from 'axios';
+
+const App = () => {
+  const [recording, setRecording] = useState();
+  const [responseAudio, setResponseAudio] = useState();
+
+  const startRecording = async () => {
+    try {
+      const permission = await Audio.requestPermissionsAsync();
+      if (permission.status === 'granted') {
+        await Audio.setAudioModeAsync({ allowsRecordingIOS: true });
+        const { recording } = await Audio.Recording.createAsync(
+          Audio.RECORDING_OPTIONS_PRESET_HIGH_QUALITY
+        );
+        setRecording(recording);
+      } else {
+        alert('Permission to access microphone is required!');
+      }
+    } catch (err) {
+      console.error('Failed to start recording', err);
+    }
+  };
+
+  const stopRecording = async () => {
+    setRecording(undefined);
+    await recording.stopAndUnloadAsync();
+    const uri = recording.getURI();
+
+    const formData = new FormData();
+    formData.append('file', {
+      uri,
+      name: 'recording.wav',
+      type: 'audio/wav',
+    });
+
+    const response = await axios.post('https://your-api-gateway-endpoint', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+
+    setResponseAudio(response.data.audioUrl);
+  };
+
+  const playResponseAudio = async () => {
+    const { sound } = await Audio.Sound.createAsync({ uri: responseAudio });
+    await sound.playAsync();
+  };
+
+  return (
+    <View>
+      <Button title={recording ? 'Stop Recording' : 'Start Recording'} onPress={recording ? stopRecording : startRecording} />
+      {responseAudio && <Button title="Play Response" onPress={playResponseAudio} />}
+    </View>
+  );
+};
+
+export default App;
